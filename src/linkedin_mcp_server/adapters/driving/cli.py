@@ -53,6 +53,12 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Log level (default: WARNING)",
     )
+    parser.add_argument(
+        "--headless",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Run browser in headless mode (default: true). Use --no-headless to show the browser.",
+    )
     return parser
 
 

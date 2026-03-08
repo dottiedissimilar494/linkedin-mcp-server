@@ -142,15 +142,17 @@ Configuration follows a strict precedence chain: **CLI args > environment variab
 
 ### CLI Arguments
 
-| Argument      | Description                         | Default     |
-| ------------- | ----------------------------------- | ----------- |
-| `--transport` | `stdio` or `streamable-http`        | `stdio`     |
-| `--host`      | Host for HTTP transport             | `127.0.0.1` |
-| `--port`      | Port for HTTP transport             | `8000`      |
-| `--log-level` | `DEBUG`, `INFO`, `WARNING`, `ERROR` | `WARNING`   |
-| `--login`     | Open browser for LinkedIn login     | —           |
-| `--logout`    | Clear stored credentials            | —           |
-| `--status`    | Check session status                | —           |
+| Argument        | Description                         | Default     |
+| --------------- | ----------------------------------- | ----------- |
+| `--transport`   | `stdio` or `streamable-http`        | `stdio`     |
+| `--host`        | Host for HTTP transport             | `127.0.0.1` |
+| `--port`        | Port for HTTP transport             | `8000`      |
+| `--log-level`   | `DEBUG`, `INFO`, `WARNING`, `ERROR` | `WARNING`   |
+| `--headless`    | Run browser in headless mode        | `true`      |
+| `--no-headless` | Show browser window (visible mode)  | —           |
+| `--login`       | Open browser for LinkedIn login     | —           |
+| `--logout`      | Clear stored credentials            | —           |
+| `--status`      | Check session status                | —           |
 
 ### Environment Variables
 

@@ -34,8 +34,17 @@ class EnvConfigAdapter(ConfigPort):
             if Path(env_path).exists():
                 load_dotenv(env_path, override=True)
 
+        # Determine headless (CLI > env > default)
+        headless = self._get_bool("LINKEDIN_HEADLESS", True)
+        if (
+            self._cli_args
+            and hasattr(self._cli_args, "headless")
+            and self._cli_args.headless is not None
+        ):
+            headless = self._cli_args.headless
+
         browser_config = BrowserConfig(
-            headless=self._get_bool("LINKEDIN_HEADLESS", True),
+            headless=headless,
             slow_mo=self._get_int("LINKEDIN_SLOW_MO", 0),
             user_agent=os.environ.get("LINKEDIN_USER_AGENT"),
             viewport_width=self._get_int("LINKEDIN_VIEWPORT_WIDTH", 1280),
