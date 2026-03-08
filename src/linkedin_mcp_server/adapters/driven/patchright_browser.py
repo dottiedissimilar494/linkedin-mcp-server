@@ -48,20 +48,30 @@ _AUTH_REDIRECT_PATTERNS = [
 # when no custom user_agent is configured.
 _UA_CHROME = "AppleWebKit/537.36 (KHTML, like Gecko)"
 _USER_AGENT_POOL = [
-    (f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) {_UA_CHROME} Chrome/131.0.0.0 Safari/537.36"),
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        f"{_UA_CHROME} Chrome/131.0.0.0 Safari/537.36"
+    ),
     (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        f"{_UA_CHROME} "
-        "Chrome/131.0.0.0 Safari/537.36"
+        f"{_UA_CHROME} Chrome/131.0.0.0 Safari/537.36"
     ),
-    (f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) {_UA_CHROME} Chrome/130.0.0.0 Safari/537.36"),
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        f"{_UA_CHROME} Chrome/130.0.0.0 Safari/537.36"
+    ),
     (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        f"{_UA_CHROME} "
-        "Chrome/130.0.0.0 Safari/537.36"
+        f"{_UA_CHROME} Chrome/130.0.0.0 Safari/537.36"
     ),
-    (f"Mozilla/5.0 (X11; Linux x86_64) {_UA_CHROME} Chrome/131.0.0.0 Safari/537.36"),
-    (f"Mozilla/5.0 (X11; Linux x86_64) {_UA_CHROME} Chrome/130.0.0.0 Safari/537.36"),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        f"{_UA_CHROME} Chrome/131.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        f"{_UA_CHROME} Chrome/130.0.0.0 Safari/537.36"
+    ),
 ]
 
 
@@ -259,6 +269,9 @@ class PatchrightBrowserAdapter(BrowserPort):
     async def get_cookies(self, urls: list[str] | None = None) -> list[dict[str, Any]]:
         """Return cookies from the browser context."""
         if not self._context:
+            await self._ensure_browser()
+        if not self._context:
+            logger.warning("Browser context unavailable; returning no cookies.")
             return []
         try:
             if urls:
@@ -320,8 +333,7 @@ class PatchrightBrowserAdapter(BrowserPort):
                 current_url,
             )
             raise SessionExpiredError(
-                "LinkedIn session expired during navigation. "
-                "Please re-authenticate with --login."
+                "LinkedIn session expired during navigation. Please re-authenticate with --login."
             )
 
     async def _detect_rate_limit(self, page: Page) -> None:

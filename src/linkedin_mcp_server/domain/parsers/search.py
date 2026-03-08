@@ -89,7 +89,12 @@ def parse_search_results_people(html: str, *, include_raw: bool = False) -> Peop
             # Find all <p> with _37677861 class that are direct text content
             info_divs = listitem.find_all(
                 "div",
-                class_=lambda c: c and "_04bda81b" in c and "_9dfef8a0" in c and "_837488b5" in c,
+                class_=lambda c: (
+                    c
+                    and "_04bda81b" in c
+                    and "_9dfef8a0" in c
+                    and "_837488b5" in c
+                ),
             )
             for i, div in enumerate(info_divs):
                 p = div.find("p", class_=lambda c: c and "_37677861" in c)

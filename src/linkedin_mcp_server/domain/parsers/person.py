@@ -760,7 +760,7 @@ def parse_recommendations(html: str, *, include_raw: bool = False) -> Recommenda
             relationship = aria_hidden_text(caption) if caption else None
 
             # Recommendation text from sub-components
-            text: str | None = None
+            rec_text: str | None = None
             sub = entity.find(
                 "div",
                 class_=lambda c: c and "pvs-entity__sub-components" in c,
@@ -775,7 +775,7 @@ def parse_recommendations(html: str, *, include_raw: bool = False) -> Recommenda
                     t = text(span)
                     if t:
                         text_lines.append(t)
-                text = "\n".join(text_lines) if text_lines else None
+                rec_text = "\n".join(text_lines) if text_lines else None
 
             # Author LinkedIn URL
             author_url: str | None = None
@@ -794,7 +794,7 @@ def parse_recommendations(html: str, *, include_raw: bool = False) -> Recommenda
                     author_image_url = src
 
             # Skip empty entries
-            if not author and not text:
+            if not author and not rec_text:
                 continue
 
             entries.append(
@@ -802,7 +802,7 @@ def parse_recommendations(html: str, *, include_raw: bool = False) -> Recommenda
                     author=author,
                     author_headline=author_headline,
                     relationship=relationship,
-                    text=text,
+                    text=rec_text,
                     author_url=author_url,
                     author_image_url=author_image_url,
                 )

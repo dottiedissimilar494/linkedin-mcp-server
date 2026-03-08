@@ -89,10 +89,7 @@ class ProfileAuthAdapter(AuthPort):
         """Check login status using a layered strategy: cache → cookie → navigation."""
         # Layer 1: Cache — avoid redundant checks within TTL
         now = time.monotonic()
-        if (
-            self._last_auth_result
-            and (now - self._last_auth_check) < _AUTH_CACHE_TTL_S
-        ):
+        if self._last_auth_result and (now - self._last_auth_check) < _AUTH_CACHE_TTL_S:
             logger.debug("Auth check skipped — cached result still valid")
             return True
 
@@ -178,8 +175,7 @@ class ProfileAuthAdapter(AuthPort):
         if not verified:
             logger.warning("Login appeared successful but post-login verification failed")
             raise AuthenticationError(
-                "Login appeared to succeed but session verification failed. "
-                "Please try again."
+                "Login appeared to succeed but session verification failed. Please try again."
             )
 
         print("  Login detected and verified! Session saved.\n")
@@ -188,18 +184,13 @@ class ProfileAuthAdapter(AuthPort):
     async def export_cookies(self) -> bool:
         """Export session cookies to a JSON file for portability."""
         try:
-            cookies = await self._browser.get_cookies(
-                urls=["https://www.linkedin.com"]
-            )
+            cookies = await self._browser.get_cookies(urls=["https://www.linkedin.com"])
             if not cookies:
                 logger.warning("No cookies to export")
                 return False
 
             # Filter to LinkedIn cookies only
-            linkedin_cookies = [
-                c for c in cookies
-                if ".linkedin.com" in c.get("domain", "")
-            ]
+            linkedin_cookies = [c for c in cookies if ".linkedin.com" in c.get("domain", "")]
 
             if not linkedin_cookies:
                 logger.warning("No LinkedIn cookies found to export")
@@ -211,9 +202,7 @@ class ProfileAuthAdapter(AuthPort):
                 json.dumps(linkedin_cookies, indent=2, default=str),
                 encoding="utf-8",
             )
-            logger.info(
-                "Exported %d cookies to %s", len(linkedin_cookies), export_path
-            )
+            logger.info("Exported %d cookies to %s", len(linkedin_cookies), export_path)
             return True
         except Exception as e:
             logger.error("Cookie export failed: %s", e)
@@ -288,9 +277,7 @@ class ProfileAuthAdapter(AuthPort):
         the cookie might exist but be expired server-side.
         """
         try:
-            cookies = await self._browser.get_cookies(
-                urls=["https://www.linkedin.com"]
-            )
+            cookies = await self._browser.get_cookies(urls=["https://www.linkedin.com"])
             for cookie in cookies:
                 if cookie.get("name") == _SESSION_COOKIE_NAME:
                     value = cookie.get("value", "")
