@@ -8,6 +8,7 @@ import asyncio
 import logging
 import random
 from pathlib import Path
+from typing import Any
 
 from patchright.async_api import (
     Browser,
@@ -20,6 +21,7 @@ from patchright.async_api import (
 from linkedin_mcp_server.domain.exceptions import (
     NetworkError,
     RateLimitError,
+    SessionExpiredError,
 )
 from linkedin_mcp_server.domain.value_objects import BrowserConfig, PageContent
 from linkedin_mcp_server.ports.browser import BrowserPort
@@ -30,6 +32,16 @@ _RATE_LIMIT_MARKERS = [
     "we've detected unusual activity",
     "you've reached the limit",
     "too many requests",
+]
+
+# URL patterns that indicate the session has expired mid-operation
+_AUTH_REDIRECT_PATTERNS = [
+    "/login",
+    "/authwall",
+    "/checkpoint",
+    "/challenge",
+    "/uas/login",
+    "/uas/consumer-email-challenge",
 ]
 
 # Realistic Chrome user agents — one is picked randomly per session
@@ -114,7 +126,11 @@ class PatchrightBrowserAdapter(BrowserPort):
         for attempt in range(1, 4):
             try:
                 await page.goto(url, wait_until=wait_until)
+                # Detect mid-navigation auth redirects (session expired)
+                self._check_auth_redirect(page.url, url)
                 return
+            except SessionExpiredError:
+                raise
             except Exception as e:
                 last_error = e
                 logger.warning(
@@ -240,8 +256,32 @@ class PatchrightBrowserAdapter(BrowserPort):
         page = await self._ensure_browser()
         return page.url
 
+    async def get_cookies(self, urls: list[str] | None = None) -> list[dict[str, Any]]:
+        """Return cookies from the browser context."""
+        if not self._context:
+            return []
+        try:
+            if urls:
+                return await self._context.cookies(urls)
+            return await self._context.cookies()
+        except Exception as e:
+            logger.warning("Failed to read cookies: %s", e)
+            return []
+
+    async def add_cookies(self, cookies: list[dict[str, Any]]) -> None:
+        """Add cookies to the browser context."""
+        if not self._context:
+            # Force browser init so context is available
+            await self._ensure_browser()
+        if self._context:
+            await self._context.add_cookies(cookies)
+
+    def is_alive(self) -> bool:
+        """Check if the browser instance is running and usable."""
+        return self._page is not None and self._context is not None
+
     async def close(self) -> None:
-        """Close browser and release resources."""
+        """Close browser and release resources. Browser can be re-initialized later."""
         if self._context:
             try:
                 await self._context.close()
@@ -260,6 +300,29 @@ class PatchrightBrowserAdapter(BrowserPort):
         logger.info("Browser closed")
 
     # ── Internal helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _check_auth_redirect(current_url: str, requested_url: str) -> None:
+        """Detect if LinkedIn redirected us to a login page mid-operation.
+
+        This catches session expiry during navigation — e.g., the user
+        was authenticated when the server started but the cookie expired
+        while scraping.
+        """
+        # Don't flag when we intentionally navigate to login pages
+        if any(pattern in requested_url for pattern in _AUTH_REDIRECT_PATTERNS):
+            return
+
+        if any(pattern in current_url for pattern in _AUTH_REDIRECT_PATTERNS):
+            logger.warning(
+                "Auth redirect detected: requested %s, landed on %s",
+                requested_url,
+                current_url,
+            )
+            raise SessionExpiredError(
+                "LinkedIn session expired during navigation. "
+                "Please re-authenticate with --login."
+            )
 
     async def _detect_rate_limit(self, page: Page) -> None:
         """Check if LinkedIn is rate-limiting and raise if so."""

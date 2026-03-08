@@ -17,6 +17,7 @@ from linkedin_mcp_server.domain.exceptions import (
     ProfileNotFoundError,
     RateLimitError,
     ScrapingError,
+    SessionExpiredError,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,12 @@ def map_domain_error(exception: Exception, context: str = "") -> NoReturn:
         ToolError: Always, with a user-friendly message
     """
     prefix = f"[{context}] " if context else ""
+
+    if isinstance(exception, SessionExpiredError):
+        raise ToolError(
+            f"{prefix}LinkedIn session expired during operation. "
+            "Please re-authenticate by running the server with --login."
+        ) from exception
 
     if isinstance(exception, AuthenticationError):
         raise ToolError(
