@@ -18,12 +18,24 @@ class ManageSessionUseCase:
         return SessionStatus(is_valid=False, message="Browser closed")
 
     async def check_status(self) -> SessionStatus:
-        """Check the current session status."""
-        is_valid = await self._auth.is_authenticated()
+        """Check the current session status with detailed information."""
+        has_creds = self._auth.has_credentials()
+        is_valid = await self._auth.is_authenticated() if has_creds else False
+        browser_alive = self._browser.is_alive()
+
+        if is_valid:
+            message = "Authenticated"
+        elif has_creds and browser_alive:
+            message = "Session expired — re-authenticate with --login"
+        elif has_creds:
+            message = "Credentials exist but session not verified"
+        else:
+            message = "No credentials — authenticate with --login"
+
         return SessionStatus(
             is_valid=is_valid,
             profile_path=str(self._auth.get_profile_path()),
-            message="Valid" if is_valid else "Expired",
+            message=message,
         )
 
     async def login(self, warm_up: bool = True) -> SessionStatus:
@@ -41,4 +53,34 @@ class ManageSessionUseCase:
         return SessionStatus(
             is_valid=False,
             message="Credentials cleared" if success else "Failed to clear",
+        )
+
+    async def export_cookies(self) -> SessionStatus:
+        """Export session cookies for portability."""
+        success = await self._auth.export_cookies()
+        return SessionStatus(
+            is_valid=success,
+            profile_path=str(self._auth.get_profile_path()),
+            message="Cookies exported" if success else "Cookie export failed",
+        )
+
+    async def import_cookies(self) -> SessionStatus:
+        """Import session cookies from portable file."""
+        success = await self._auth.import_cookies()
+        if success:
+            # Verify the imported cookies work
+            is_valid = await self._auth.is_authenticated()
+            return SessionStatus(
+                is_valid=is_valid,
+                profile_path=str(self._auth.get_profile_path()),
+                message=(
+                    "Cookies imported and verified"
+                    if is_valid
+                    else "Cookies imported but session invalid"
+                ),
+            )
+        return SessionStatus(
+            is_valid=False,
+            profile_path=str(self._auth.get_profile_path()),
+            message="Cookie import failed",
         )

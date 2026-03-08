@@ -1,6 +1,7 @@
 """Browser port — abstracts all browser interaction."""
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 from linkedin_mcp_server.domain.value_objects import PageContent
 
@@ -45,6 +46,26 @@ class BrowserPort(ABC):
     @abstractmethod
     async def get_current_url(self) -> str:
         """Return the current page URL."""
+        ...
+
+    @abstractmethod
+    async def get_cookies(self, urls: list[str] | None = None) -> list[dict[str, Any]]:
+        """Return cookies from the browser context.
+
+        Args:
+            urls: Optional list of URLs to filter cookies for.
+                  If None, returns all cookies.
+        """
+        ...
+
+    @abstractmethod
+    async def add_cookies(self, cookies: list[dict[str, Any]]) -> None:
+        """Add cookies to the browser context."""
+        ...
+
+    @abstractmethod
+    def is_alive(self) -> bool:
+        """Check if the browser instance is running and usable."""
         ...
 
     @abstractmethod

@@ -5,14 +5,13 @@ import logging
 from typing import Any
 from urllib.parse import quote_plus
 
+from linkedin_mcp_server.application.scrape_base import NAV_DELAY
 from linkedin_mcp_server.domain.models.responses import JobSearchResponse
 from linkedin_mcp_server.domain.parsers import parse_section
 from linkedin_mcp_server.ports.auth import AuthPort
 from linkedin_mcp_server.ports.browser import BrowserPort
 
 logger = logging.getLogger(__name__)
-
-_NAV_DELAY = 2.0
 
 # LinkedIn URL parameter mappings
 _DATE_POSTED_MAP = {
@@ -96,7 +95,7 @@ class SearchJobsUseCase:
             page_url = base_url if page_num == 0 else f"{base_url}&start={page_num * 25}"
 
             if page_num > 0:
-                await asyncio.sleep(_NAV_DELAY)
+                await asyncio.sleep(NAV_DELAY)
 
             content = await self._browser.extract_search_page_html(page_url)
 
