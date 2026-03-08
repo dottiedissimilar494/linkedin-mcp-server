@@ -36,12 +36,36 @@ _RATE_LIMIT_MARKERS = [
 # when no custom user_agent is configured.
 _UA_CHROME = "AppleWebKit/537.36 (KHTML, like Gecko)"
 _USER_AGENT_POOL = [
-    f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) {_UA_CHROME} Chrome/131.0.0.0 Safari/537.36",
-    f"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) {_UA_CHROME} Chrome/131.0.0.0 Safari/537.36",
-    f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) {_UA_CHROME} Chrome/130.0.0.0 Safari/537.36",
-    f"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) {_UA_CHROME} Chrome/130.0.0.0 Safari/537.36",
-    f"Mozilla/5.0 (X11; Linux x86_64) {_UA_CHROME} Chrome/131.0.0.0 Safari/537.36",
-    f"Mozilla/5.0 (X11; Linux x86_64) {_UA_CHROME} Chrome/130.0.0.0 Safari/537.36",
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        f"{_UA_CHROME} "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        f"{_UA_CHROME} "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        f"{_UA_CHROME} "
+        "Chrome/130.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        f"{_UA_CHROME} "
+        "Chrome/130.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        f"{_UA_CHROME} "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    (
+        "Mozilla/5.0 (X11; Linux x86_64) "
+        f"{_UA_CHROME} "
+        "Chrome/130.0.0.0 Safari/537.36"
+    ),
 ]
 
 
