@@ -84,26 +84,37 @@ class ProfileAuthAdapter(AuthPort):
         self._config = config
         self._last_auth_check: float = 0.0
         self._last_auth_result: bool = False
+        self._nav_validated: bool = False
 
     async def is_authenticated(self) -> bool:
-        """Check login status using a layered strategy: cache → cookie → navigation."""
+        """Check login status using a layered strategy: cache → cookie → navigation.
+
+        The cookie check is a fast *negative* pre-filter: if the cookie is
+        missing we fail immediately without navigation.  A present cookie
+        is necessary but not sufficient (it could be expired server-side),
+        so we still require at least one navigation-verified check per TTL.
+        """
         # Layer 1: Cache — avoid redundant checks within TTL
         now = time.monotonic()
-        if self._last_auth_result and (now - self._last_auth_check) < _AUTH_CACHE_TTL_S:
+        if (
+            self._last_auth_result
+            and self._nav_validated
+            and (now - self._last_auth_check) < _AUTH_CACHE_TTL_S
+        ):
             logger.debug("Auth check skipped — cached result still valid")
             return True
 
-        # Layer 2: Cookie check (fast, no network)
+        # Layer 2: Cookie pre-check (fast, no network)
         cookie_ok = await self._check_session_cookie()
-        if cookie_ok:
-            logger.debug("Auth confirmed via session cookie")
-            self._update_cache(True)
-            return True
+        if not cookie_ok:
+            logger.debug("Auth failed — session cookie missing or expired")
+            self._update_cache(False)
+            return False
 
         # Layer 3: Full navigation check (slow but definitive)
         try:
             nav_ok = await self._check_via_navigation()
-            self._update_cache(nav_ok)
+            self._update_cache(nav_ok, nav_validated=True)
             return nav_ok
         except Exception as e:
             logger.warning("Auth navigation check failed: %s", e)
@@ -190,7 +201,11 @@ class ProfileAuthAdapter(AuthPort):
                 return False
 
             # Filter to LinkedIn cookies only
-            linkedin_cookies = [c for c in cookies if ".linkedin.com" in c.get("domain", "")]
+            # Handle both "linkedin.com" and ".linkedin.com" domains
+            linkedin_cookies = [
+                c for c in cookies
+                if (c.get("domain") or "").lstrip(".").endswith("linkedin.com")
+            ]
 
             if not linkedin_cookies:
                 logger.warning("No LinkedIn cookies found to export")
@@ -202,6 +217,8 @@ class ProfileAuthAdapter(AuthPort):
                 json.dumps(linkedin_cookies, indent=2, default=str),
                 encoding="utf-8",
             )
+            # Restrict file permissions — cookies are sensitive auth material
+            export_path.chmod(0o600)
             logger.info("Exported %d cookies to %s", len(linkedin_cookies), export_path)
             return True
         except Exception as e:
@@ -259,15 +276,20 @@ class ProfileAuthAdapter(AuthPort):
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _update_cache(self, result: bool) -> None:
+    def _update_cache(self, result: bool, *, nav_validated: bool = False) -> None:
         """Update the auth check cache."""
         self._last_auth_check = time.monotonic()
         self._last_auth_result = result
+        if nav_validated:
+            self._nav_validated = True
+        if not result:
+            self._nav_validated = False
 
     def _invalidate_cache(self) -> None:
         """Force the next auth check to do a full validation."""
         self._last_auth_check = 0.0
         self._last_auth_result = False
+        self._nav_validated = False
 
     async def _check_session_cookie(self) -> bool:
         """Check if the `li_at` session cookie exists.
