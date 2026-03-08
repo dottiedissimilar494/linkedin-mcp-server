@@ -62,9 +62,7 @@ PERSON_SECTIONS: dict[str, SectionConfig] = {
     "languages": SectionConfig("languages", "/details/languages/"),
     "contact_info": SectionConfig("contact_info", "/overlay/contact-info/", is_overlay=True),
     "posts": SectionConfig("posts", "/recent-activity/all/"),
-    "recommendations": SectionConfig(
-        "recommendations", "/details/recommendations/"
-    ),
+    "recommendations": SectionConfig("recommendations", "/details/recommendations/"),
 }
 
 COMPANY_SECTIONS: dict[str, SectionConfig] = {
@@ -158,8 +156,11 @@ def parse_section(
 # ── Section validators ────────────────────────────────────────────────────────
 
 
-def parse_person_sections(sections: str | None) -> tuple[set[str], list[str]]:
-    """Parse comma-separated section names against known person sections.
+def _validate_sections(
+    sections: str | None,
+    known_sections: dict[str, SectionConfig],
+) -> tuple[set[str], list[str]]:
+    """Parse comma-separated section names against a known section registry.
 
     Returns:
         Tuple of (valid_requested_sections, unknown_section_names)
@@ -168,23 +169,17 @@ def parse_person_sections(sections: str | None) -> tuple[set[str], list[str]]:
         return set(), []
 
     requested = {s.strip() for s in sections.split(",") if s.strip()}
-    known = set(PERSON_SECTIONS.keys())
+    known = set(known_sections.keys())
     valid = requested & known
     unknown = sorted(requested - known)
     return valid, unknown
+
+
+def parse_person_sections(sections: str | None) -> tuple[set[str], list[str]]:
+    """Parse comma-separated section names against known person sections."""
+    return _validate_sections(sections, PERSON_SECTIONS)
 
 
 def parse_company_sections(sections: str | None) -> tuple[set[str], list[str]]:
-    """Parse comma-separated section names against known company sections.
-
-    Returns:
-        Tuple of (valid_requested_sections, unknown_section_names)
-    """
-    if not sections:
-        return set(), []
-
-    requested = {s.strip() for s in sections.split(",") if s.strip()}
-    known = set(COMPANY_SECTIONS.keys())
-    valid = requested & known
-    unknown = sorted(requested - known)
-    return valid, unknown
+    """Parse comma-separated section names against known company sections."""
+    return _validate_sections(sections, COMPANY_SECTIONS)

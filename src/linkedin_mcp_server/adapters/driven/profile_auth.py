@@ -83,8 +83,7 @@ class ProfileAuthAdapter(AuthPort):
         """Validate session and raise AuthenticationError if expired."""
         if not await self.is_authenticated():
             raise AuthenticationError(
-                "LinkedIn session is not authenticated. "
-                "Run with --login to authenticate."
+                "LinkedIn session is not authenticated. Run with --login to authenticate."
             )
 
     def has_credentials(self) -> bool:
@@ -112,9 +111,7 @@ class ProfileAuthAdapter(AuthPort):
             await self._browser.navigate("https://www.linkedin.com/login")
         except Exception as e:
             logger.error("Failed to navigate to LinkedIn login: %s", e)
-            raise AuthenticationError(
-                f"Could not open LinkedIn login page: {e}"
-            ) from e
+            raise AuthenticationError(f"Could not open LinkedIn login page: {e}") from e
 
         print(
             f"  Waiting for login (up to {_LOGIN_TIMEOUT_S // 60} minutes)...\n"

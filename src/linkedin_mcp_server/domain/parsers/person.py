@@ -6,7 +6,7 @@ Uses BeautifulSoup for robust HTML parsing.
 
 import re
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import Tag
 
 from linkedin_mcp_server.domain.models.person import (
     ContactInfo,
@@ -27,30 +27,11 @@ from linkedin_mcp_server.domain.models.person import (
     RecommendationEntry,
     RecommendationsSection,
 )
-
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-
-def _text(element: Tag | None) -> str | None:
-    """Extract visible text from an element, stripping whitespace."""
-    if element is None:
-        return None
-    text = element.get_text(separator=" ", strip=True)
-    # Collapse multiple whitespace
-    text = re.sub(r"\s+", " ", text).strip()
-    return text or None
-
-
-def _aria_hidden_text(element: Tag | None) -> str | None:
-    """Extract the aria-hidden='true' span text for display values."""
-    if element is None:
-        return None
-    span = element.find("span", attrs={"aria-hidden": "true"})
-    return _text(span) if span else _text(element)
-
-
-def _soup(html: str) -> BeautifulSoup:
-    return BeautifulSoup(html, "lxml")
+from linkedin_mcp_server.domain.parsers.common import (
+    aria_hidden_text,
+    soup,
+    text,
+)
 
 
 def _split_dates_duration(raw: str | None) -> tuple[str | None, str | None]:
@@ -58,9 +39,9 @@ def _split_dates_duration(raw: str | None) -> tuple[str | None, str | None]:
     if not raw:
         return None, None
     parts = raw.split(" · ", 1)
-    dates = parts[0].strip() if parts else None
+    dates_ = parts[0].strip() if parts else None
     duration = parts[1].strip() if len(parts) > 1 else None
-    return dates, duration
+    return dates_, duration
 
 
 def _extract_description(entity: Tag) -> str | None:
@@ -71,19 +52,17 @@ def _extract_description(entity: Tag) -> str | None:
 
     lines: list[str] = []
     for span in sub.find_all("span", attrs={"aria-hidden": "true"}, recursive=True):
-        text = _text(span)
-        if not text:
+        txt = text(span)
+        if not txt:
             continue
         # Skip skills lines
-        if text.startswith("Skills:") or text.startswith("Skills :"):
+        if txt.startswith("Skills:") or txt.startswith("Skills :"):
             continue
         # Skip if parent is a bold-only wrapper (already captured as title)
-        parent_div = span.find_parent(
-            "div", class_=lambda c: c and "t-bold" in c if c else False
-        )
+        parent_div = span.find_parent("div", class_=lambda c: c and "t-bold" in c if c else False)
         if parent_div:
             continue
-        lines.append(text)
+        lines.append(txt)
 
     return "\n".join(lines) if lines else None
 
@@ -96,80 +75,75 @@ def parse_person_main_profile(html: str, *, include_raw: bool = False) -> Person
 
     Extracts: name, headline, location, followers, connections, about.
     """
-    soup = _soup(html)
+    s = soup(html)
 
     # ── Name ──────────────────────────────────────────────────────────────
     name: str | None = None
-    h1 = soup.find("h1")
+    h1 = s.find("h1")
     if h1:
-        name = _text(h1)
+        name = text(h1)
 
     # ── Headline ──────────────────────────────────────────────────────────
     headline: str | None = None
-    headline_el = soup.find("div", class_="text-body-medium")
+    headline_el = s.find("div", class_="text-body-medium")
     if headline_el:
-        headline = _text(headline_el)
+        headline = text(headline_el)
 
     # ── Location ──────────────────────────────────────────────────────────
     location: str | None = None
-    location_el = soup.find(
+    location_el = s.find(
         "span",
         class_=lambda c: (
-            c
-            and "text-body-small" in c
-            and "break-words" in c
-            and "t-black--light" in c
+            c and "text-body-small" in c and "break-words" in c and "t-black--light" in c
         ),
     )
     if location_el:
         # Make sure it's not inside the followers/connections area
         parent_ul = location_el.find_parent("ul")
         if parent_ul is None:
-            location = _text(location_el)
+            location = text(location_el)
 
     # Fallback: search for location by structure
     if not location:
-        for span in soup.find_all(
-            "span", class_=lambda c: c and "text-body-small" in c
-        ):
+        for span in s.find_all("span", class_=lambda c: c and "text-body-small" in c):
             classes = span.get("class", [])
             if "t-black--light" in classes and "break-words" in classes and "inline" in classes:
-                text = _text(span)
-                if text and "follower" not in text.lower() and "connection" not in text.lower():
-                    location = text
+                txt = text(span)
+                if txt and "follower" not in txt.lower() and "connection" not in txt.lower():
+                    location = txt
                     break
 
     # ── Followers & Connections ───────────────────────────────────────────
     followers: str | None = None
     connections: str | None = None
 
-    for li in soup.find_all("li", class_=lambda c: c and "text-body-small" in c):
-        text = _text(li)
-        if not text:
+    for li in s.find_all("li", class_=lambda c: c and "text-body-small" in c):
+        txt = text(li)
+        if not txt:
             continue
-        lower = text.lower()
+        lower = txt.lower()
         if "follower" in lower:
-            followers = text
+            followers = txt
         elif "connection" in lower:
-            connections = text
+            connections = txt
 
     # ── About ─────────────────────────────────────────────────────────────
     about: str | None = None
-    for section in soup.find_all("section"):
-        anchor = section.find("div", id="about")
+    for section_el in s.find_all("section"):
+        anchor = section_el.find("div", id="about")
         if anchor:
-            about_container = section.find(
+            about_container = section_el.find(
                 "div",
                 class_=lambda c: c and "inline-show-more-text" in c if c else False,
             )
             if about_container:
                 about_span = about_container.find("span", attrs={"aria-hidden": "true"})
-                about = _text(about_span) if about_span else _text(about_container)
+                about = text(about_span) if about_span else text(about_container)
             break
 
     # ── Profile image ─────────────────────────────────────────────────────
     profile_image_url: str | None = None
-    profile_img = soup.find(
+    profile_img = s.find(
         "img",
         class_=lambda c: c and "pv-top-card-profile-picture__image" in c,
     )
@@ -197,7 +171,7 @@ def _parse_experience_entity(entity: Tag, parent_company: str | None = None) -> 
     """Parse a single profile-component-entity into an ExperienceEntry."""
     # Title is always the bold text
     title_el = entity.find("div", class_=lambda c: c and "t-bold" in c)
-    title = _aria_hidden_text(title_el)
+    title = aria_hidden_text(title_el)
 
     # Company and employment info from t-14 t-normal spans (non-caption)
     company = parent_company
@@ -208,14 +182,14 @@ def _parse_experience_entity(entity: Tag, parent_company: str | None = None) -> 
         # Skip caption wrappers (they hold dates)
         if span.find(class_="pvs-entity__caption-wrapper"):
             continue
-        text = _aria_hidden_text(span)
-        if text and not company:
+        txt = aria_hidden_text(span)
+        if txt and not company:
             # For standalone entries: "Company · Employment type"
-            company = text.split(" · ")[0].strip() if " · " in text else text
+            company = txt.split(" · ")[0].strip() if " · " in txt else txt
 
     # Dates & duration from pvs-entity__caption-wrapper
     caption = entity.find("span", class_="pvs-entity__caption-wrapper")
-    caption_text = _aria_hidden_text(caption) if caption else None
+    caption_text = aria_hidden_text(caption) if caption else None
     dates, duration = _split_dates_duration(caption_text)
 
     # Description from sub-components
@@ -246,11 +220,11 @@ def parse_experience(html: str, *, include_raw: bool = False) -> ExperienceSecti
     - Standalone entries: title + company in a single entity
     - Company groups: company as parent with nested role sub-entries
     """
-    soup = _soup(html)
+    s = soup(html)
     entries: list[ExperienceEntry] = []
 
     # Top-level experience items
-    top_items = soup.find_all(
+    top_items = s.find_all(
         "li",
         class_=lambda c: c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c,
     )
@@ -267,7 +241,7 @@ def parse_experience(html: str, *, include_raw: bool = False) -> ExperienceSecti
         if nested_container:
             # Company group: extract company name from bold text
             company_el = entity.find("div", class_=lambda c: c and "t-bold" in c)
-            company_name = _aria_hidden_text(company_el)
+            company_name = aria_hidden_text(company_el)
 
             # Find all nested role entities
             nested_entities = nested_container.find_all(
@@ -293,10 +267,10 @@ def parse_education(html: str, *, include_raw: bool = False) -> EducationSection
 
     Extracts list of EducationEntry (school, degree, dates, description).
     """
-    soup = _soup(html)
+    s = soup(html)
     entries: list[EducationEntry] = []
 
-    items = soup.find_all(
+    items = s.find_all(
         "li",
         class_=lambda c: c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c,
     )
@@ -310,40 +284,34 @@ def parse_education(html: str, *, include_raw: bool = False) -> EducationSection
 
         # School name — bold text
         school_el = entity.find("div", class_=lambda c: c and "t-bold" in c)
-        school = _aria_hidden_text(school_el)
+        school = aria_hidden_text(school_el)
 
         # Degree — first t-14 t-normal span (non-caption, non-light)
         degree: str | None = None
         info_spans = entity.find_all(
             "span",
-            class_=lambda c: (
-                c and "t-14" in c and "t-normal" in c and "t-black--light" not in c
-            ),
+            class_=lambda c: c and "t-14" in c and "t-normal" in c and "t-black--light" not in c,
         )
         for span in info_spans:
             if span.find(class_="pvs-entity__caption-wrapper"):
                 continue
-            degree = _aria_hidden_text(span)
+            degree = aria_hidden_text(span)
             if degree:
                 break
 
         # Dates from pvs-entity__caption-wrapper
         caption = entity.find("span", class_="pvs-entity__caption-wrapper")
-        dates = _aria_hidden_text(caption) if caption else None
+        dates_ = aria_hidden_text(caption) if caption else None
 
         # Description from sub-components (e.g. "Full scholarship.")
         description: str | None = None
-        sub = entity.find(
-            "div", class_=lambda c: c and "pvs-entity__sub-components" in c
-        )
+        sub = entity.find("div", class_=lambda c: c and "pvs-entity__sub-components" in c)
         if sub:
             desc_lines: list[str] = []
-            for span in sub.find_all(
-                "span", attrs={"aria-hidden": "true"}, recursive=True
-            ):
-                text = _text(span)
-                if text:
-                    desc_lines.append(text)
+            for span in sub.find_all("span", attrs={"aria-hidden": "true"}, recursive=True):
+                txt = text(span)
+                if txt:
+                    desc_lines.append(txt)
             description = "\n".join(desc_lines) if desc_lines else None
 
         # School logo URL
@@ -356,8 +324,11 @@ def parse_education(html: str, *, include_raw: bool = False) -> EducationSection
 
         entries.append(
             EducationEntry(
-                school=school, degree=degree, dates=dates,
-                description=description, school_logo_url=school_logo_url,
+                school=school,
+                degree=degree,
+                dates=dates_,
+                description=description,
+                school_logo_url=school_logo_url,
             )
         )
 
@@ -375,7 +346,7 @@ def parse_contact_info(html: str, *, include_raw: bool = False) -> ContactInfo:
 
     Extracts: linkedin_url, emails, phones, websites, birthday.
     """
-    soup = _soup(html)
+    s = soup(html)
 
     linkedin_url: str | None = None
     emails: list[str] = []
@@ -384,29 +355,29 @@ def parse_contact_info(html: str, *, include_raw: bool = False) -> ContactInfo:
     birthday: str | None = None
 
     # Each contact type is a <section class="pv-contact-info__contact-type">
-    for section in soup.find_all("section", class_="pv-contact-info__contact-type"):
-        header = section.find("h3")
+    for section_el in s.find_all("section", class_="pv-contact-info__contact-type"):
+        header = section_el.find("h3")
         if not header:
             continue
-        header_text = _text(header) or ""
+        header_text = text(header) or ""
         header_lower = header_text.lower()
 
         if "profile" in header_lower:
             # LinkedIn profile URL
-            link = section.find("a", href=True)
+            link = section_el.find("a", href=True)
             if link:
                 linkedin_url = link["href"].strip()
 
         elif "website" in header_lower:
             # Website links
-            for link in section.find_all("a", href=True):
+            for link in section_el.find_all("a", href=True):
                 url = link["href"].strip()
                 if url:
                     websites.append(url)
 
         elif "phone" in header_lower:
             # Phone numbers
-            for li in section.find_all("li"):
+            for li in section_el.find_all("li"):
                 # Phone is in a <span class="t-14 t-black t-normal">
                 span = li.find(
                     "span",
@@ -415,25 +386,25 @@ def parse_contact_info(html: str, *, include_raw: bool = False) -> ContactInfo:
                     ),
                 )
                 if span:
-                    phone = _text(span)
+                    phone = text(span)
                     if phone:
                         phones.append(phone)
 
         elif "email" in header_lower:
             # Email addresses
-            for link in section.find_all("a", href=True):
+            for link in section_el.find_all("a", href=True):
                 href = link["href"].strip()
                 if href.startswith("mailto:"):
                     emails.append(href[7:])  # Strip "mailto:"
                 else:
-                    email_text = _text(link)
-                    if email_text and "@" in email_text:
-                        emails.append(email_text)
+                    email_txt = text(link)
+                    if email_txt and "@" in email_txt:
+                        emails.append(email_txt)
 
         elif "birthday" in header_lower:
             # Birthday
-            span = section.find("span", class_=lambda c: c and "t-normal" in c)
-            birthday = _text(span)
+            span = section_el.find("span", class_=lambda c: c and "t-normal" in c)
+            birthday = text(span)
 
     return ContactInfo(
         linkedin_url=linkedin_url,
@@ -448,23 +419,19 @@ def parse_contact_info(html: str, *, include_raw: bool = False) -> ContactInfo:
 # ── Interests parser ─────────────────────────────────────────────────────────
 
 
-def parse_interests(
-    html: str, *, include_raw: bool = False
-) -> InterestsSection:
+def parse_interests(html: str, *, include_raw: bool = False) -> InterestsSection:
     """Parse interests section HTML.
 
     Extracts entity entries (name, headline, followers, url)
     from the active tab.
     """
-    soup = _soup(html)
+    s = soup(html)
 
     # Parse entries from the active tab panel
     entries: list[InterestEntry] = []
-    items = soup.find_all(
+    items = s.find_all(
         "li",
-        class_=lambda c: (
-            c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c
-        ),
+        class_=lambda c: c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c,
     )
 
     for item in items:
@@ -478,18 +445,13 @@ def parse_interests(
 
         # Name — bold text
         name_el = entity.find("div", class_=lambda c: c and "t-bold" in c)
-        name = _aria_hidden_text(name_el)
+        name = aria_hidden_text(name_el)
 
         # Headline — first t-14 t-normal span (not light, not caption)
         headline: str | None = None
         info_spans = entity.find_all(
             "span",
-            class_=lambda c: (
-                c
-                and "t-14" in c
-                and "t-normal" in c
-                and "t-black--light" not in c
-            ),
+            class_=lambda c: c and "t-14" in c and "t-normal" in c and "t-black--light" not in c,
         )
         for span in info_spans:
             if span.find(class_="pvs-entity__caption-wrapper"):
@@ -497,13 +459,13 @@ def parse_interests(
             # Skip supplementary info (e.g. "· 2nd")
             if "pvs-entity__supplementary-info" in (span.get("class") or []):
                 continue
-            headline = _aria_hidden_text(span)
+            headline = aria_hidden_text(span)
             if headline:
                 break
 
         # Followers from pvs-entity__caption-wrapper
         caption = entity.find("span", class_="pvs-entity__caption-wrapper")
-        followers = _aria_hidden_text(caption) if caption else None
+        followers = aria_hidden_text(caption) if caption else None
 
         # LinkedIn URL from the first <a> with an href to linkedin.com
         linkedin_url: str | None = None
@@ -540,21 +502,17 @@ def parse_interests(
 # ── Honors parser ────────────────────────────────────────────────────────────
 
 
-def parse_honors(
-    html: str, *, include_raw: bool = False
-) -> HonorsSection:
+def parse_honors(html: str, *, include_raw: bool = False) -> HonorsSection:
     """Parse honors & awards section HTML.
 
     Extracts list of HonorEntry (title, issued_by, description).
     """
-    soup = _soup(html)
+    s = soup(html)
     entries: list[HonorEntry] = []
 
-    items = soup.find_all(
+    items = s.find_all(
         "li",
-        class_=lambda c: (
-            c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c
-        ),
+        class_=lambda c: c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c,
     )
 
     for item in items:
@@ -568,43 +526,34 @@ def parse_honors(
 
         # Title — bold text
         title_el = entity.find("div", class_=lambda c: c and "t-bold" in c)
-        title = _aria_hidden_text(title_el)
+        title = aria_hidden_text(title_el)
 
         # Issued by — first t-14 t-normal span (e.g. "Issued by X · Jan 2009")
         issued_by: str | None = None
         # Look in the main content area for the issued-by span
-        main_content = entity.find(
-            "div", class_=lambda c: c and "flex-grow-1" in c
-        )
+        main_content = entity.find("div", class_=lambda c: c and "flex-grow-1" in c)
         if main_content:
             for span in main_content.find_all(
                 "span",
                 class_=lambda c: (
-                    c
-                    and "t-14" in c
-                    and "t-normal" in c
-                    and "t-black--light" not in c
+                    c and "t-14" in c and "t-normal" in c and "t-black--light" not in c
                 ),
             ):
                 if span.find(class_="pvs-entity__caption-wrapper"):
                     continue
-                issued_by = _aria_hidden_text(span)
+                issued_by = aria_hidden_text(span)
                 if issued_by:
                     break
 
         # Description from sub-components
         description: str | None = None
-        sub = entity.find(
-            "div", class_=lambda c: c and "pvs-entity__sub-components" in c
-        )
+        sub = entity.find("div", class_=lambda c: c and "pvs-entity__sub-components" in c)
         if sub:
             desc_lines: list[str] = []
-            for span in sub.find_all(
-                "span", attrs={"aria-hidden": "true"}, recursive=True
-            ):
-                text = _text(span)
-                if text and not text.startswith("Associated with"):
-                    desc_lines.append(text)
+            for span in sub.find_all("span", attrs={"aria-hidden": "true"}, recursive=True):
+                txt = text(span)
+                if txt and not txt.startswith("Associated with"):
+                    desc_lines.append(txt)
             description = "\n".join(desc_lines) if desc_lines else None
 
         entries.append(
@@ -624,21 +573,17 @@ def parse_honors(
 # ── Languages parser ─────────────────────────────────────────────────────────
 
 
-def parse_languages(
-    html: str, *, include_raw: bool = False
-) -> LanguagesSection:
+def parse_languages(html: str, *, include_raw: bool = False) -> LanguagesSection:
     """Parse languages section HTML.
 
     Extracts list of LanguageEntry (language, proficiency).
     """
-    soup = _soup(html)
+    s = soup(html)
     entries: list[LanguageEntry] = []
 
-    items = soup.find_all(
+    items = s.find_all(
         "li",
-        class_=lambda c: (
-            c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c
-        ),
+        class_=lambda c: c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c,
     )
 
     for item in items:
@@ -652,15 +597,13 @@ def parse_languages(
 
         # Language name — bold text
         name_el = entity.find("div", class_=lambda c: c and "t-bold" in c)
-        language = _aria_hidden_text(name_el)
+        language = aria_hidden_text(name_el)
 
         # Proficiency from pvs-entity__caption-wrapper
         caption = entity.find("span", class_="pvs-entity__caption-wrapper")
-        proficiency = _aria_hidden_text(caption) if caption else None
+        proficiency = aria_hidden_text(caption) if caption else None
 
-        entries.append(
-            LanguageEntry(language=language, proficiency=proficiency)
-        )
+        entries.append(LanguageEntry(language=language, proficiency=proficiency))
 
     return LanguagesSection(
         languages=entries,
@@ -671,18 +614,16 @@ def parse_languages(
 # ── Posts parser ─────────────────────────────────────────────────────────────
 
 
-def parse_person_posts(
-    html: str, *, include_raw: bool = False
-) -> PersonPostsSection:
+def parse_person_posts(html: str, *, include_raw: bool = False) -> PersonPostsSection:
     """Parse person posts / recent-activity HTML.
 
     Extracts individual post entries.
     """
-    soup = _soup(html)
+    s = soup(html)
 
     # Parse individual posts
     entries: list[PersonPostEntry] = []
-    articles = soup.find_all(
+    articles = s.find_all(
         "div",
         class_=lambda c: c and "feed-shared-update-v2" in c,
         attrs={"data-urn": True},
@@ -695,20 +636,18 @@ def parse_person_posts(
         author_el = article.find(
             "span", class_=lambda c: c and "update-components-actor__title" in c
         )
-        author = _aria_hidden_text(author_el) if author_el else None
+        author = aria_hidden_text(author_el) if author_el else None
 
         # Posted ago (e.g. "2w", "1mo") from sub-description visually-hidden
         posted_ago: str | None = None
         sub_desc = article.find(
             "span",
-            class_=lambda c: (
-                c and "update-components-actor__sub-description" in c
-            ),
+            class_=lambda c: c and "update-components-actor__sub-description" in c,
         )
         if sub_desc:
             vh = sub_desc.find("span", class_="visually-hidden")
             if vh:
-                raw_text = _text(vh) or ""
+                raw_text = text(vh) or ""
                 # e.g. "2 weeks ago · Visible to anyone..."
                 parts = raw_text.split(" \u2022 ")
                 if parts:
@@ -718,9 +657,7 @@ def parse_person_posts(
         post_text: str | None = None
         commentary = article.find(
             "div",
-            class_=lambda c: (
-                c and "update-components-update-v2__commentary" in c
-            ),
+            class_=lambda c: c and "update-components-update-v2__commentary" in c,
         )
         if commentary:
             # Remove hidden spans to avoid duplication
@@ -737,24 +674,19 @@ def parse_person_posts(
         proof = article.find(
             "span",
             class_=lambda c: (
-                c
-                and "social-details-social-counts__social-proof-fallback-number"
-                in c
+                c and "social-details-social-counts__social-proof-fallback-number" in c
             ),
         )
         if proof:
-            reactions = _text(proof)
+            reactions = text(proof)
         else:
             # Fall back to reactions-count span
             count_el = article.find(
                 "span",
-                class_=lambda c: (
-                    c
-                    and "social-details-social-counts__reactions-count" in c
-                ),
+                class_=lambda c: c and "social-details-social-counts__reactions-count" in c,
             )
             if count_el:
-                reactions = _text(count_el)
+                reactions = text(count_el)
 
         entries.append(
             PersonPostEntry(
@@ -775,26 +707,20 @@ def parse_person_posts(
 # ── Recommendations parser ──────────────────────────────────────────────────
 
 
-def parse_recommendations(
-    html: str, *, include_raw: bool = False
-) -> RecommendationsSection:
+def parse_recommendations(html: str, *, include_raw: bool = False) -> RecommendationsSection:
     """Parse recommendations section HTML.
 
     Separates recommendations into received and given based on
     LinkedIn's tab panel structure.
     """
-    soup = _soup(html)
+    s = soup(html)
 
     def _parse_entries_from_container(container: Tag) -> list[RecommendationEntry]:
         """Parse recommendation entries from a container element."""
         entries: list[RecommendationEntry] = []
         items = container.find_all(
             "li",
-            class_=lambda c: (
-                c
-                and "pvs-list__paged-list-item" in c
-                and "artdeco-list__item" in c
-            ),
+            class_=lambda c: c and "pvs-list__paged-list-item" in c and "artdeco-list__item" in c,
         )
 
         for item in items:
@@ -807,42 +733,31 @@ def parse_recommendations(
                 continue
 
             # Author name — bold text
-            name_el = entity.find(
-                "div", class_=lambda c: c and "t-bold" in c
-            )
-            author = _aria_hidden_text(name_el)
+            name_el = entity.find("div", class_=lambda c: c and "t-bold" in c)
+            author = aria_hidden_text(name_el)
 
             # Author headline — first t-14 t-normal span (not light)
             author_headline: str | None = None
-            main_content = entity.find(
-                "div", class_=lambda c: c and "flex-grow-1" in c
-            )
+            main_content = entity.find("div", class_=lambda c: c and "flex-grow-1" in c)
             if main_content:
                 for span in main_content.find_all(
                     "span",
                     class_=lambda c: (
-                        c
-                        and "t-14" in c
-                        and "t-normal" in c
-                        and "t-black--light" not in c
+                        c and "t-14" in c and "t-normal" in c and "t-black--light" not in c
                     ),
                     recursive=True,
                 ):
                     if span.find(class_="pvs-entity__caption-wrapper"):
                         continue
-                    if "pvs-entity__supplementary-info" in (
-                        span.get("class") or []
-                    ):
+                    if "pvs-entity__supplementary-info" in (span.get("class") or []):
                         continue
-                    author_headline = _aria_hidden_text(span)
+                    author_headline = aria_hidden_text(span)
                     if author_headline:
                         break
 
             # Relationship from pvs-entity__caption-wrapper
-            caption = entity.find(
-                "span", class_="pvs-entity__caption-wrapper"
-            )
-            relationship = _aria_hidden_text(caption) if caption else None
+            caption = entity.find("span", class_="pvs-entity__caption-wrapper")
+            relationship = aria_hidden_text(caption) if caption else None
 
             # Recommendation text from sub-components
             text: str | None = None
@@ -857,7 +772,7 @@ def parse_recommendations(
                     attrs={"aria-hidden": "true"},
                     recursive=True,
                 ):
-                    t = _text(span)
+                    t = text(span)
                     if t:
                         text_lines.append(t)
                 text = "\n".join(text_lines) if text_lines else None
@@ -899,12 +814,12 @@ def parse_recommendations(
     given: list[RecommendationEntry] = []
 
     # LinkedIn uses tab buttons + tabpanels. Identify tab IDs.
-    tab_buttons = soup.find_all("button", attrs={"role": "tab"})
+    tab_buttons = s.find_all("button", attrs={"role": "tab"})
 
     # Map tab panel IDs to "received" or "given"
     tab_map: dict[str, str] = {}
     for btn in tab_buttons:
-        btn_text = _text(btn) or ""
+        btn_text = text(btn) or ""
         btn_lower = btn_text.lower()
         controls = btn.get("aria-controls", "")
         if "received" in btn_lower and controls:
@@ -915,7 +830,7 @@ def parse_recommendations(
     if tab_map:
         # Parse each tab panel separately
         for panel_id, category in tab_map.items():
-            panel = soup.find(id=panel_id)
+            panel = s.find(id=panel_id)
             if panel:
                 entries = _parse_entries_from_container(panel)
                 if category == "received":
@@ -924,7 +839,7 @@ def parse_recommendations(
                     given = entries
     else:
         # Fallback: no tab structure found, treat all as received
-        received = _parse_entries_from_container(soup)
+        received = _parse_entries_from_container(s)
 
     return RecommendationsSection(
         received=received,
@@ -941,21 +856,21 @@ def parse_generic(html: str, *, include_raw: bool = False) -> GenericSection:
 
     Returns the text content extracted from the HTML.
     """
-    soup = _soup(html)
+    s = soup(html)
 
     # Remove script and style tags
-    for tag in soup(["script", "style", "svg"]):
+    for tag in s(["script", "style", "svg"]):
         tag.decompose()
 
     # Remove visually-hidden elements (duplicated a11y text)
-    for el in soup.find_all(class_="visually-hidden"):
+    for el in s.find_all(class_="visually-hidden"):
         el.decompose()
 
-    text = soup.get_text(separator="\n", strip=True)
+    content = s.get_text(separator="\n", strip=True)
     # Collapse multiple blank lines
-    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    content = re.sub(r"\n{3,}", "\n\n", content).strip()
 
     return GenericSection(
-        content=text or None,
+        content=content or None,
         raw=html if include_raw else None,
     )

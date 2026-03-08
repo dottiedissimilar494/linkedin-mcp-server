@@ -5,7 +5,9 @@ from typing import Any
 from fastmcp import Context, FastMCP
 
 from linkedin_mcp_server.adapters.driving.error_mapping import map_domain_error
-from linkedin_mcp_server.adapters.driving.serialization import serialize_sections
+from linkedin_mcp_server.adapters.driving.serialization import (
+    serialize_scrape_response,
+)
 from linkedin_mcp_server.application.scrape_person import ScrapePersonUseCase
 from linkedin_mcp_server.application.search_people import SearchPeopleUseCase
 
@@ -37,15 +39,7 @@ def register_person_tools(
     ) -> dict[str, Any]:
         try:
             result = await scrape_person_uc.execute(linkedin_username, sections)
-            response: dict[str, Any] = {
-                "url": result.url,
-                "sections": serialize_sections(result.sections),
-            }
-            if result.unknown_sections:
-                response["unknown_sections"] = result.unknown_sections
-            if result.failed_sections:
-                response["failed_sections"] = result.failed_sections
-            return response
+            return serialize_scrape_response(result)
         except Exception as e:
             map_domain_error(e, "get_person_profile")
 
@@ -65,9 +59,6 @@ def register_person_tools(
     ) -> dict[str, Any]:
         try:
             result = await search_people_uc.execute(keywords, location)
-            return {
-                "url": result.url,
-                "sections": serialize_sections(result.sections),
-            }
+            return serialize_scrape_response(result)
         except Exception as e:
             map_domain_error(e, "search_people")

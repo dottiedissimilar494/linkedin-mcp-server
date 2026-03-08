@@ -5,7 +5,10 @@ from typing import Any
 from fastmcp import Context, FastMCP
 
 from linkedin_mcp_server.adapters.driving.error_mapping import map_domain_error
-from linkedin_mcp_server.adapters.driving.serialization import serialize_sections
+from linkedin_mcp_server.adapters.driving.serialization import (
+    serialize_scrape_response,
+    serialize_sections,
+)
 from linkedin_mcp_server.application.scrape_job import ScrapeJobUseCase
 from linkedin_mcp_server.application.search_jobs import SearchJobsUseCase
 
@@ -31,10 +34,7 @@ def register_job_tools(
     ) -> dict[str, Any]:
         try:
             result = await scrape_job_uc.execute(job_id)
-            return {
-                "url": result.url,
-                "sections": serialize_sections(result.sections),
-            }
+            return serialize_scrape_response(result)
         except Exception as e:
             map_domain_error(e, "get_job_details")
 
@@ -82,11 +82,10 @@ def register_job_tools(
                 easy_apply=easy_apply,
                 sort_by=sort_by,
             )
-            response: dict[str, Any] = {
+            return {
                 "url": result.url,
                 "sections": serialize_sections(result.sections),
                 "job_ids": result.job_ids,
             }
-            return response
         except Exception as e:
             map_domain_error(e, "search_jobs")

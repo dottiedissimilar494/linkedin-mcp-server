@@ -58,14 +58,11 @@ def map_domain_error(exception: Exception, context: str = "") -> NoReturn:
 
     if isinstance(exception, ScrapingError):
         raise ToolError(
-            f"{prefix}Failed to extract data from the page. "
-            "The page structure may have changed."
+            f"{prefix}Failed to extract data from the page. The page structure may have changed."
         ) from exception
 
     if isinstance(exception, ConfigurationError):
-        raise ToolError(
-            f"{prefix}Configuration error: {exception}"
-        ) from exception
+        raise ToolError(f"{prefix}Configuration error: {exception}") from exception
 
     if isinstance(exception, LinkedInMCPError):
         raise ToolError(f"{prefix}{exception}") from exception
